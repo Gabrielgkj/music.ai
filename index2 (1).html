@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MUSIC AI</title>
+<style>body{background:#07060b;color:#f2f0fa;font:16px system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;text-align:center;padding:1rem}a{color:#22e58b}</style>
+</head><body><p id="m">Voltando para a MUSIC AI…</p>
+<script>
+// Ponte do login do Spotify. Não precisa mudar nunca mais.
+(function () {
+  var back = null;
+  try { back = localStorage.getItem('sp_return'); } catch (e) {}
+  if (back && /^\/music\.ai\/[\w.-]+\.html$/.test(back) && back !== location.pathname) {
+    location.replace(back + location.search);
+  } else {
+    document.getElementById('m').innerHTML = 'Não achei a página do app. <a href="/music.ai/">Abrir a MUSIC AI</a> e tocar em Conectar de novo.';
+  }
+})();
+</script></body></html>
