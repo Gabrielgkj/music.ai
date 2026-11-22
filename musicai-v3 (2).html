@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07060b">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob: https:; connect-src https://api.spotify.com https://accounts.spotify.com; base-uri 'none'; form-action 'none'">
+<title>MUSIC AI v3.1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07060b; --panel:#100e18; --line:#221e33;
+  --text:#f2f0fa; --muted:#9a95b3;
+  --green:#22e58b; --purple:#8b5cf6;
+  --r:16px;
+}
+@media (prefers-color-scheme: light){ :root{color-scheme:dark} }
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font:400 16px/1.5 Inter,system-ui,sans-serif;
+  background-image:radial-gradient(60% 40% at 85% -5%,rgba(139,92,246,.22),transparent),
+                   radial-gradient(45% 35% at 0% 100%,rgba(34,229,139,.10),transparent);
+  background-attachment:fixed}
+h1{font:700 clamp(1.7rem,5vw,2.6rem)/1.15 Sora,sans-serif;letter-spacing:-.02em;margin-bottom:.5rem}
+.sub{color:var(--muted);max-width:60ch;margin-bottom:1.5rem}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+
+.app{display:flex;min-height:100%}
+.main{flex:1;min-width:0;padding:clamp(1.25rem,4vw,3rem);padding-bottom:6rem;max-width:900px}
+.view{display:none}
+.view.active{display:block;animation:in .35s ease}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* navegação: lateral no PC, barra embaixo no celular */
+.nav{position:fixed;z-index:10;display:flex;background:rgba(10,8,16,.92);backdrop-filter:blur(14px);border-color:var(--line)}
+.brand,.conn{display:none}
+.nav-btn{flex:1;background:none;border:0;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;padding:.6rem 0;font-size:.72rem;cursor:pointer;transition:color .2s}
+.nav-btn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav-btn.active{color:var(--green)}
+@media (max-width:759px){
+  .nav{left:0;right:0;bottom:0;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0)}
+}
+@media (min-width:760px){
+  .nav{top:0;bottom:0;left:0;width:230px;flex-direction:column;border-right:1px solid var(--line);padding:1.5rem 1rem}
+  .app{padding-left:230px}
+  .brand{display:flex;align-items:center;gap:.7rem;font:700 1.1rem Sora,sans-serif;letter-spacing:.06em;margin-bottom:2rem}
+  .nav-btn{flex:none;flex-direction:row;gap:.8rem;font-size:.95rem;padding:.7rem .9rem;border-radius:12px}
+  .nav-btn:hover{background:var(--panel);color:var(--text)}
+  .nav-btn.active{background:linear-gradient(90deg,rgba(34,229,139,.14),rgba(139,92,246,.12));color:var(--green)}
+  .conn{display:flex;align-items:center;gap:.5rem;margin-top:auto;font-size:.8rem;color:var(--muted)}
+}
+.dot{width:8px;height:8px;border-radius:50%;background:#e5484d}
+.conn.on .dot{background:var(--green);box-shadow:0 0 8px var(--green)}
+
+/* logo animado */
+.logo{display:flex;align-items:flex-end;gap:2px;height:22px}
+.logo i,.eq i{display:block;width:4px;border-radius:2px;background:linear-gradient(var(--green),var(--purple));animation:bar 1.1s ease-in-out infinite}
+.logo i:nth-child(1){height:40%}.logo i:nth-child(2){height:100%;animation-delay:.2s}
+.logo i:nth-child(3){height:65%;animation-delay:.4s}.logo i:nth-child(4){height:85%;animation-delay:.1s}
+@keyframes bar{50%{transform:scaleY(.45)}}
+.logo i,.eq i{transform-origin:bottom}
+
+/* caixa de pedido (destaque da tela) */
+.prompt{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:1rem;transition:border-color .25s,box-shadow .25s}
+.prompt:focus-within{border-color:var(--purple);box-shadow:0 0 0 4px rgba(139,92,246,.15),0 0 40px rgba(34,229,139,.08)}
+.prompt textarea{width:100%;background:none;border:0;resize:none;outline:0;font-size:1.05rem}
+.prompt textarea::placeholder{color:#6b6685}
+.prompt-row{display:flex;align-items:center;justify-content:space-between;margin-top:.5rem}
+.eq{display:flex;align-items:flex-end;gap:3px;height:28px}
+.eq i{width:5px}
+.eq i:nth-child(1){height:50%}.eq i:nth-child(2){height:100%;animation-delay:.15s}
+.eq i:nth-child(3){height:70%;animation-delay:.3s}.eq i:nth-child(4){height:90%;animation-delay:.45s}
+.eq i:nth-child(5){height:40%;animation-delay:.6s}
+.prompt:not(:focus-within) .eq i{animation-play-state:paused;opacity:.5}
+
+.btn{border:0;border-radius:999px;padding:.7rem 1.4rem;font-weight:600;cursor:pointer;transition:transform .15s,filter .2s}
+.btn.primary{background:linear-gradient(90deg,var(--green),#6ee7b7 50%,var(--purple));color:#06050a}
+.btn:hover{filter:brightness(1.1)}.btn:active{transform:scale(.97)}
+
+.chips{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0}
+.chip{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:.45rem .9rem;font-size:.9rem;cursor:pointer;transition:all .2s}
+.chip:hover{border-color:var(--purple)}
+.chip.on{background:rgba(139,92,246,.2);border-color:var(--purple);color:#fff}
+
+.notice,.empty{border:1px dashed var(--line);border-radius:var(--r);padding:1.2rem;color:var(--muted);margin-top:1.2rem}
+.notice{border-color:rgba(34,229,139,.35);color:#a7f3d0}
+
+.searchbar{display:flex;gap:.6rem}
+input[type=text],input[type=search],input[type=number]{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.75rem 1rem;outline:0}
+input[type=text]:focus,input[type=search]:focus,input[type=number]:focus{border-color:var(--purple)}
+.form{display:grid;gap:1.1rem;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:1.2rem}
+.form label,.field{display:grid;gap:.5rem;color:var(--muted);font-size:.92rem}
+.form .chips{margin:0}
+.form b{color:var(--green)}
+input[type=range]{accent-color:var(--green);width:100%}
+.check{display:flex!important;align-items:center;gap:.6rem}
+.check input{accent-color:var(--green);width:18px;height:18px}
+
+.notice{display:flex;flex-wrap:wrap;gap:.8rem;align-items:center;justify-content:space-between}
+.btn.out{background:none;border:1px solid var(--line);color:var(--text);margin-top:1.2rem}
+.tgrid{display:grid;gap:1.2rem;margin-top:1.2rem}
+.tcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:1rem 1.2rem}
+.tcard h2{font:600 1.05rem Sora,sans-serif;margin-bottom:.6rem}
+.tcard ol{padding-left:1.3rem;color:var(--muted)}
+.tcard li{margin:.35rem 0}
+.tcard li b{color:var(--text);font-weight:500}
+@media (min-width:760px){.tgrid{grid-template-columns:1fr 1fr}}
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--bgimg,none) center/cover no-repeat;opacity:.3;pointer-events:none}
+.avatar{display:block;width:56px;height:56px;padding:0;border-radius:50%;border:2px solid var(--purple);background:linear-gradient(135deg,var(--purple),var(--green)) center/cover;margin-bottom:1rem;cursor:pointer}
+.tcard ol{list-style:none;padding:0}
+.tcard li.r{display:flex;align-items:center;gap:.7rem;margin:.55rem 0}
+.tcard li.r div{min-width:0}
+.tcard li small{display:block;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.th{width:44px;height:44px;border-radius:8px;object-fit:cover;flex:none;background:linear-gradient(135deg,var(--purple),var(--green))}
+.rk{font-style:normal;color:var(--muted);width:1.4rem;text-align:right;flex:none}
+.tcard.wide{grid-column:1/-1}
+.tcard p{color:var(--muted);margin:.4rem 0}
+.tcard p b{color:var(--text);font-weight:500}
+#custom,#understood .tcard{margin:1rem 0}
+.crow{display:flex;flex-wrap:wrap;gap:.6rem}
+.btn.small{margin-top:0;padding:.5rem 1rem;font-size:.9rem}
+.swatches{display:flex;gap:.7rem;margin-top:1rem}
+.swatches button{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);cursor:pointer}
+.swatches button.on{border-color:#fff}
+.ver{color:var(--muted);font-size:.8rem;margin-top:1.5rem}
+#diag{margin-top:1.5rem}#diag .crow{margin:.6rem 0}.hlab{margin:.2rem 0 0;color:var(--muted)}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin:.6rem 0}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--green),var(--purple));transition:width .3s}
+#pvSteps{padding:0;margin:.4rem 0 .8rem;color:var(--muted);font-size:.9rem}
+#pvSteps li{margin:.15rem 0}#pvSteps li.on{color:var(--text)}#pvSteps li.ok{color:var(--green)}
+#pvMain .tcard,#pvInfo .tcard{margin:1rem 0}
+.tcard textarea,.tcard select{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.7rem 1rem;color:var(--text);outline:0;margin:.5rem 0;font:inherit}
+.tcard select{width:auto;margin:0}
+a.btn{display:inline-block;text-decoration:none;color:var(--text);border:1px solid var(--line)}
+.tact{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.35rem}
+.tact button,.tact a{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:99px;padding:.5rem .85rem;font-size:.85rem;cursor:pointer;text-decoration:none}
+.tact .warn{color:#fbbf24}
+.cover{display:grid;grid-template-columns:1fr 1fr;width:72px;height:72px;border-radius:10px;overflow:hidden;flex:none;background:linear-gradient(135deg,var(--purple),var(--green))}
+.cover img{width:100%;height:100%;object-fit:cover}
+.libcard{display:flex;gap:.8rem;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:.8rem}
+.libcard div.t{min-width:0;flex:1}.libcard small{display:block;color:var(--muted)}
+#libSearch{margin-bottom:1rem}
+.toast{position:fixed;left:50%;bottom:5.5rem;transform:translate(-50%,20px);background:#1b1730;border:1px solid var(--purple);padding:.7rem 1.1rem;border-radius:12px;opacity:0;pointer-events:none;transition:all .3s;z-index:20;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (min-width:760px){.toast{bottom:2rem}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="nav" aria-label="Navegação principal">
+    <div class="brand"><span class="logo"><i></i><i></i><i></i><i></i></span><b>MUSIC AI</b></div>
+    <button class="nav-btn active" data-view="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Início</span></button>
+    <button class="nav-btn" data-view="discover"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Descobrir</span></button>
+    <button class="nav-btn" data-view="create"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Criar</span></button>
+    <button class="nav-btn" data-view="library"><svg viewBox="0 0 24 24"><path d="M4 5v14M9 5v14M14 7l6 12"/></svg><span>Biblioteca</span></button>
+    <button class="nav-btn" data-view="taste"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.4-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.600-9 9-9 9z"/></svg><span>Meu gosto</span></button>
+    <div class="conn" id="conn"><span class="dot"></span><span id="connText">Spotify desconectado</span></div>
+  </aside>
+
+  <main class="main">
+
+    <section class="view active" id="view-home">
+      <button class="avatar" id="avatar" aria-label="Personalizar"></button>
+      <h1>O que você quer ouvir hoje?</h1>
+      <p class="sub">Descreva em suas palavras. A MUSIC AI monta a playlist com músicas reais do Spotify.</p>
+      <div class="prompt">
+        <textarea id="promptInput" rows="3" placeholder="Ex: 25 músicas de rock dos anos 2000 para treinar, sem repetir o que já ouvi"></textarea>
+        <div class="prompt-row">
+          <div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+          <button class="btn primary" id="promptGo">Criar playlist</button>
+        </div>
+      </div>
+      <div class="chips" id="ideas">
+        <button class="chip">Foco para estudar</button>
+        <button class="chip">Treino pesado</button>
+        <button class="chip">Estrada à noite</button>
+        <button class="chip">Jantar tranquilo</button>
+      </div>
+      <label class="check hlab"><input type="checkbox" id="useTasteHome"> Usar meu gosto musical (seus artistas mais ouvidos)</label>
+      <div id="understood"></div>
+      <p class="ver">MUSIC AI · versão 3.1</p>
+      <div class="notice" id="homeNotice"><span id="homeNoticeText">Conecte sua conta Spotify para começar.</span> <button class="btn primary connect-btn" id="connectBtn">Conectar ao Spotify</button></div>
+    </section>
+
+    <section class="view" id="view-discover">
+      <h1>Descobrir</h1>
+      <p class="sub">Busque artistas, músicas e gêneros no catálogo do Spotify.</p>
+      <div class="searchbar">
+        <input id="searchInput" type="search" placeholder="Artista, música ou gênero" autocomplete="off">
+        <button class="btn primary" id="searchGo">Buscar</button>
+      </div>
+      <div class="chips" id="genreChips"></div>
+      <div class="empty" id="searchEmpty">Busque um artista, uma música ou escolha um gênero.</div>
+      <div id="results" class="tgrid"></div>
+      <button class="btn out" id="moreBtn" hidden>Ver mais resultados</button>
+    </section>
+
+    <section class="view" id="view-create">
+      <h1>Criar playlist</h1>
+      <p class="sub">Defina o que quiser. Você vê a prévia antes de salvar.</p>
+      <div class="form">
+        <label>Quantidade de músicas (sem limite do app)
+          <input type="number" id="countInput" min="1" value="25" inputmode="numeric">
+        </label>
+        <label>Artistas de referência
+          <input type="text" id="artistsInput" placeholder="Ex: Queen, Legião Urbana">
+        </label>
+        <div class="field">Gêneros
+          <div class="chips" id="createGenres"></div>
+        </div>
+        <div class="field">Atmosfera
+          <div class="chips" id="moods"></div>
+        </div>
+        <label class="check"><input type="checkbox" id="useTaste"> Usar meu gosto musical (seus artistas mais ouvidos)</label>
+        <label class="check"><input type="checkbox" id="bestOf"> Só as mais relevantes de cada artista (até 10, na ordem do Spotify)</label>
+        <label class="check"><input type="checkbox" id="noRepeat" checked> Evitar músicas que já tenho nas minhas playlists</label>
+        <button class="btn primary" id="previewBtn">Gerar prévia</button>
+      </div>
+      <button class="btn out" id="openDraft" hidden>Abrir prévia atual</button>
+    </section>
+
+    <section class="view" id="view-library">
+      <h1>Biblioteca</h1>
+      <p class="sub">Playlists salvas neste aparelho (ficam guardadas mesmo fechando o navegador).</p>
+      <input type="search" id="libSearch" placeholder="Buscar por nome, gênero ou artista">
+      <div id="libList" class="tgrid"></div>
+      <div class="crow" style="margin-top:1rem"><button class="btn out small" id="libExport">Exportar backup</button><label class="btn out small">Importar backup<input type="file" id="libImport" accept="application/json,.json" hidden></label></div>
+      <p class="ver">Use uma aba normal do navegador: em aba anônima a biblioteca some ao fechar. Exporte um backup de vez em quando.</p>
+      <div class="empty" id="libEmpty" hidden>Você ainda não salvou nenhuma playlist.</div>
+    </section>
+
+    <section class="view" id="view-taste">
+      <h1>Meu gosto</h1>
+      <p class="sub">Seus rankings reais do Spotify e as opções de visual.</p>
+      <div class="tcard" id="custom">
+        <h2>Personalizar</h2>
+        <div class="crow">
+          <label class="btn out small">Foto de perfil<input type="file" id="avatarFile" accept="image/*" hidden></label>
+          <label class="btn out small">Imagem de fundo<input type="file" id="bgFile" accept="image/*" hidden></label>
+          <button class="btn out small" id="resetCustom">Restaurar padrão</button>
+        </div>
+        <div class="swatches" id="swatches"></div>
+      </div>
+      <div class="chips" id="rangeChips"></div>
+      <div class="empty" id="tasteBox">Conecte o Spotify na tela Início para ver seu perfil musical.</div>
+      <div id="tasteData" class="tgrid"></div>
+      <button class="btn out" id="logoutBtn" hidden>Sair da conta</button>
+      <div class="tcard" id="diag">
+        <h2>Diagnóstico do Spotify</h2>
+        <p>Testa os recursos reais com a sua conta. Só lê dados, não cria nem altera nada. Usa cerca de 12 requisições.</p>
+        <div class="crow">
+          <button class="btn primary small" id="diagRun">Rodar teste</button>
+          <button class="btn out small" id="diagCopy" hidden>Copiar relatório</button>
+          <button class="btn out small" id="diagRenew">Testar renovação do login</button>
+        </div>
+        <div id="diagOut"></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-preview">
+      <h1>Prévia</h1>
+      <div class="tcard" id="pvProg" hidden>
+        <h2 id="pvStep">Preparando…</h2>
+        <div class="bar"><i id="pvBar"></i></div>
+        <p id="pvCount"></p>
+        <ol id="pvSteps"></ol>
+        <button class="btn out small" id="pvStop">Parar e ver o que achou</button>
+      </div>
+      <div id="pvInfo"></div>
+      <div id="pvMain" hidden>
+        <div class="tcard">
+          <input type="text" id="pvName" placeholder="Nome da playlist" maxlength="100">
+          <textarea id="pvDesc" rows="2" maxlength="300" placeholder="Descrição"></textarea>
+          <p id="pvStats"></p>
+          <div class="crow">
+            <button class="btn out small" id="pvMore">+ Adicionar mais</button>
+            <button class="btn out small" id="pvShuffle">Embaralhar</button>
+            <button class="btn out small" id="pvOrg">Organizar</button>
+            <button class="btn out small" id="pvRegen">Gerar novamente</button>
+            <button class="btn out small" id="pvClear">Remover todas</button>
+          </div>
+        </div>
+        <div class="tcard">
+          <h2>Salvar</h2>
+          <div class="crow">
+            <button class="btn primary small" id="pvSaveLib">Salvar na biblioteca</button>
+            <button class="btn primary small" id="pvSaveSp">Criar no Spotify</button>
+            <select id="pvPublic"><option value="0">Privada</option><option value="1">Pública</option></select>
+          </div>
+          <div class="bar" id="spBarWrap" hidden><i id="spBar"></i></div>
+          <p id="spMsg"></p>
+          <div class="crow">
+            <button class="btn out small" id="pvLinks">Copiar links</button>
+            <button class="btn out small" id="pvCopyList">Copiar lista</button>
+            <a class="btn out small" id="pvOpenSp" target="_blank" rel="noopener" hidden>Abrir no Spotify</a>
+          </div>
+        </div>
+        <div class="tcard">
+          <h2>Adicionar música</h2>
+          <div class="searchbar"><input id="pvQ" type="search" placeholder="Música ou artista"><button class="btn primary small" id="pvQGo">Buscar</button></div>
+          <ol id="pvQRes"></ol>
+        </div>
+        <div class="tcard">
+          <h2>Músicas</h2>
+          <ol id="pvTracks"></ol>
+          <button class="btn out small" id="pvShowMore" hidden>Mostrar mais</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+// MUSIC AI - Etapa 1: apenas a interface (sem Spotify ainda)
+const GENRES = ['funk','gospel','trap','forró','sofrência','sertanejo','pagode','samba','mpb','rap','hip hop','piseiro','rock','pop','eletrônica','jazz','metal','indie','r&b','reggae','clássica'];
+const MOODS = ['energética','relaxante','feliz','melancólica','focada','romântica','festa'];
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+
+// Navegação entre telas
+function show(view) {
+  $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
+  $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  window.scrollTo({ top: 0 });
+}
+$$('.nav-btn').forEach(b => b.addEventListener('click', () => show(b.dataset.view)));
+
+// Aviso rápido
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// Cria botões de seleção (chips)
+function makeChips(el, items, multi) {
+  items.forEach(name => {
+    const c = document.createElement('button');
+    c.type = 'button';
+    c.className = 'chip';
+    c.textContent = name;
+    c.addEventListener('click', () => {
+      if (!multi) el.querySelectorAll('.chip').forEach(o => o !== c && o.classList.remove('on'));
+      c.classList.toggle('on');
+    });
+    el.appendChild(c);
+  });
+}
+makeChips($('#genreChips'), GENRES, false);
+makeChips($('#createGenres'), GENRES, true);
+makeChips($('#moods'), MOODS, true);
+
+const selected = (sel) => [...$$(sel + ' .chip.on')].map(c => c.textContent);
+
+// Ideias rápidas preenchem o pedido
+$$('#ideas .chip').forEach(c => c.addEventListener('click', () => {
+  $('#promptInput').value = c.textContent;
+  $('#promptInput').focus();
+}));
+
+// Controle de quantidade
+
+
+// Botões ainda sem função real (serão ligados ao Spotify nas próximas etapas)
+// (o botão Criar playlist está ligado na seção da etapa 4, mais abaixo)
+// (a busca real do Spotify está na seção da etapa 3, mais abaixo)
+// (Gerar prévia está ligado na seção v3, mais abaixo)
+
+// ===== Etapa 2: login com Spotify (OAuth 2.0 PKCE, sem segredo) =====
+const SPOTIFY = {
+  clientId: 'ca2bb6b5f0ce445280cb664d4e82f2e8',
+  redirectUri: 'https://gabrielgkj.github.io/music.ai/index2.html',
+  scopes: 'user-top-read user-read-recently-played user-library-read playlist-read-private playlist-modify-private playlist-modify-public'
+};
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+function randomString(n) { const a = new Uint8Array(n); crypto.getRandomValues(a); return b64url(a).slice(0, n); }
+
+async function login() {
+  const verifier = randomString(64), state = randomString(16);
+  const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+  store.set('sp_verifier', verifier);
+  store.set('sp_state', state);
+  store.set('sp_return', location.pathname);
+  const p = new URLSearchParams({
+    client_id: SPOTIFY.clientId, response_type: 'code', redirect_uri: SPOTIFY.redirectUri,
+    scope: SPOTIFY.scopes, state, code_challenge_method: 'S256', code_challenge: challenge
+  });
+  location.href = 'https://accounts.spotify.com/authorize?' + p;
+}
+
+function saveTokens(t) {
+  store.set('sp_access', t.access_token);
+  if (t.scope) store.set('sp_scope', t.scope);
+  store.set('sp_expires', String(Date.now() + (t.expires_in - 60) * 1000));
+  if (t.refresh_token) store.set('sp_refresh', t.refresh_token);
+}
+async function tokenRequest(body) {
+  const r = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(body)
+  });
+  if (!r.ok) throw new Error('token ' + r.status);
+  saveTokens(await r.json());
+}
+async function handleRedirect() {
+  const q = new URLSearchParams(location.search);
+  if (!q.has('code') && !q.has('error')) return;
+  history.replaceState({}, '', location.pathname);
+  if (q.has('error')) return toast('Login cancelado.');
+  if (q.get('state') !== store.get('sp_state')) return toast('Erro de segurança no login. Tente de novo.');
+  try {
+    await tokenRequest({
+      client_id: SPOTIFY.clientId, grant_type: 'authorization_code', code: q.get('code'),
+      redirect_uri: SPOTIFY.redirectUri, code_verifier: store.get('sp_verifier')
+    });
+  } catch (e) { toast('Não consegui entrar (' + e.message + '). Tente de novo.'); }
+  store.del('sp_verifier'); store.del('sp_state');
+}
+const REQ = { total: 0, times: [], last429: null };
+const sleep = ms => new Promise(ok => setTimeout(ok, ms));
+let refreshing = null;
+async function getToken() {
+  if (!store.get('sp_access')) return null;
+  if (Date.now() < Number(store.get('sp_expires') || 0)) return store.get('sp_access');
+  const rt = store.get('sp_refresh');
+  if (!rt) return null;
+  // uma única renovação por vez, mesmo com várias chamadas juntas
+  if (!refreshing) {
+    refreshing = tokenRequest({ client_id: SPOTIFY.clientId, grant_type: 'refresh_token', refresh_token: rt })
+      .finally(() => { refreshing = null; });
+  }
+  try { await refreshing; return store.get('sp_access'); }
+  catch (e) {
+    if (/^token 4/.test(e.message)) { logout(); return null; } // refresh recusado: sessão inválida
+    throw new Error('sem conexão');                              // falha de rede: não deslogar
+  }
+}
+async function api(path, opts) {
+  if (!navigator.onLine) throw new Error('sem internet');
+  let renewed = false;
+  for (let i = 0; i < 4; i++) {
+    const tk = await getToken();
+    if (!tk) throw new Error('sem login');
+    REQ.total++; REQ.times.push(Date.now());
+    let r;
+    const init = { method: (opts && opts.method) || 'GET', headers: { Authorization: 'Bearer ' + tk } };
+    if (opts && opts.body) { init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(opts.body); }
+    try { r = await fetch('https://api.spotify.com/v1' + path, init); }
+    catch (e) { throw new Error('sem conexão'); }
+    if (r.status === 401) {
+      if (!renewed) { renewed = true; store.set('sp_expires', '0'); continue; }
+      logout(); throw new Error('sessão expirada');
+    }
+    if (r.status === 429) {
+      let reason = '';
+      try { reason = (await r.clone().json()).error?.reason || ''; } catch (e) {}
+      const wait = Number(r.headers.get('Retry-After')) || 2;
+      REQ.last429 = { at: Date.now(), wait, reason };
+      if (reason === 'QUOTA_EXCEEDED' || wait > 60) throw new Error('limite do Spotify atingido (' + (reason || 'espere') + ', ' + wait + 's)');
+      await sleep(wait * 1000); continue;
+    }
+    if (!r.ok) throw new Error('spotify ' + r.status);
+    return r.status === 204 ? {} : r.json().catch(() => ({}));
+  }
+  throw new Error('limite de requisições');
+}
+window.addEventListener('offline', () => toast('Sem internet.'));
+window.addEventListener('online', () => toast('Internet voltou.'));
+
+function setConnected(name) {
+  $('#conn').classList.add('on');
+  $('#connText').textContent = 'Spotify: ' + name;
+  $('#homeNoticeText').textContent = 'Conectado como ' + name + '. Escreva seu pedido acima e toque em Criar playlist.';
+  $('#connectBtn').hidden = true;
+  $('#logoutBtn').hidden = false;
+}
+function setDisconnected() {
+  $('#conn').classList.remove('on');
+  $('#connText').textContent = 'Spotify desconectado';
+  $('#homeNoticeText').textContent = 'Conecte sua conta Spotify para começar.';
+  $('#connectBtn').hidden = false;
+  $('#logoutBtn').hidden = true;
+  $('#tasteData').textContent = '';
+  $('#tasteBox').hidden = false;
+  $('#tasteBox').textContent = 'Conecte o Spotify na tela Início para ver seu perfil musical.';
+}
+function logout() {
+  ['sp_access', 'sp_expires', 'sp_refresh', 'sp_verifier', 'sp_state', 'sp_scope'].forEach(store.del);
+  setDisconnected();
+}
+
+$$('.connect-btn').forEach(b => b.addEventListener('click', login));
+$('#logoutBtn').addEventListener('click', () => { logout(); toast('Você saiu da conta.'); });
+
+(async function init() {
+  await handleRedirect();
+  if (!store.get('sp_access')) return setDisconnected();
+  try {
+    const me = await api('/me');
+    setConnected(me.display_name || me.id);
+    loadTaste();
+  } catch (e) {
+    setDisconnected();
+    toast(e.message.includes('403') ? 'Sua conta ainda não foi liberada. Peça ao dono do app para cadastrar seu e-mail do Spotify.' : 'Falha ao conectar: ' + e.message);
+  }
+})();
+// ===== Etapa 3: busca real no Spotify =====
+const SEARCH = { q: '', offset: 0, seen: new Set() };
+const norm = t => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+function buildQuery(plain) {
+  const text = $('#searchInput').value.trim();
+  const g = selected('#genreChips')[0];
+  return [text, g ? (plain ? g : 'genre:"' + g + '"') : ''].filter(Boolean).join(' ');
+}
+function ensureResultUI() {
+  const box = $('#results');
+  if (box.children.length) return;
+  box.innerHTML = '<div class="tcard"><h2>Artistas</h2><ol id="resArtists"></ol></div><div class="tcard"><h2>Músicas</h2><ol id="resTracks"></ol></div>';
+}
+async function runSearch(more) {
+  if (!store.get('sp_access')) return toast('Conecte o Spotify na tela Início.');
+  if (!more) {
+    SEARCH.q = buildQuery(); SEARCH.offset = 0; SEARCH.seen = new Set();
+    $('#results').textContent = '';
+  }
+  if (!SEARCH.q) return toast('Digite algo ou escolha um gênero.');
+  $('#searchGo').disabled = true; $('#moreBtn').hidden = true;
+  try {
+    const go = () => api('/search?q=' + encodeURIComponent(SEARCH.q) + '&type=track,artist&limit=10&offset=' + SEARCH.offset);
+    let d = await go();
+    let artists = (d.artists?.items || []).filter(Boolean);
+    let tracks = (d.tracks?.items || []).filter(Boolean);
+    if (!more && !artists.length && !tracks.length && selected('#genreChips').length) {
+      SEARCH.q = buildQuery(true);
+      d = await go();
+      artists = (d.artists?.items || []).filter(Boolean);
+      tracks = (d.tracks?.items || []).filter(Boolean);
+      if (artists.length || tracks.length) toast('O Spotify não usa esse nome de gênero. Busquei pelo texto.');
+    }
+    if (!more && !artists.length && !tracks.length) {
+      $('#searchEmpty').hidden = false;
+      $('#searchEmpty').textContent = 'Nada encontrado. Tente outro nome ou outro gênero.';
+      return;
+    }
+    $('#searchEmpty').hidden = true;
+    ensureResultUI();
+    artists.forEach(a => {
+      if (SEARCH.seen.has('a' + a.id)) return;
+      SEARCH.seen.add('a' + a.id);
+      addRow($('#resArtists'), a.name, (a.genres || []).slice(0, 2).join(', '), a.images);
+    });
+    tracks.forEach(t => {
+      const key = 't' + norm(t.name) + '|' + norm(t.artists[0]?.name || '');
+      if (SEARCH.seen.has(key)) return;
+      SEARCH.seen.add(key);
+      addRow($('#resTracks'), t.name, t.artists.map(r => r.name).join(', '), t.album?.images, undefined, plusBtn(t));
+    });
+    SEARCH.offset += 10;
+    $('#moreBtn').hidden = !(artists.length === 10 || tracks.length === 10);
+  } catch (e) {
+    toast('Erro na busca (' + e.message + ').');
+  } finally {
+    $('#searchGo').disabled = false;
+  }
+}
+$('#searchGo').addEventListener('click', () => runSearch(false));
+$('#moreBtn').addEventListener('click', () => runSearch(true));
+$('#searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(false); });
+// ===== Linhas com capa (artistas e músicas) =====
+function thumb(images) {
+  const u = images && images.length ? images[images.length - 1].url : '';
+  const el = document.createElement(u ? 'img' : 'span');
+  el.className = 'th';
+  if (u) { el.src = u; el.alt = ''; el.loading = 'lazy'; }
+  return el;
+}
+function addRow(list, main, sub, images, rank, extra) {
+  const li = document.createElement('li'); li.className = 'r';
+  if (rank) { const n = document.createElement('i'); n.className = 'rk'; n.textContent = rank; li.appendChild(n); }
+  li.appendChild(thumb(images));
+  const d = document.createElement('div');
+  const b = document.createElement('b'); b.textContent = main; d.appendChild(b);
+  if (sub) { const sm = document.createElement('small'); sm.textContent = sub; d.appendChild(sm); }
+  li.appendChild(d); if (extra) li.appendChild(extra); list.appendChild(li);
+}
+function card(title, rows) {
+  const c = document.createElement('div'); c.className = 'tcard';
+  const h = document.createElement('h2'); h.textContent = title; c.appendChild(h);
+  const ol = document.createElement('ol');
+  rows.forEach(([m, sub, im], i) => addRow(ol, m, sub, im, i + 1));
+  c.appendChild(ol);
+  return c;
+}
+
+// ===== Meu gosto: rankings por período =====
+let TASTE_RANGE = 'medium_term';
+const RANGES = [['Último mês', 'short_term'], ['Últimos 6 meses', 'medium_term'], ['Desde sempre', 'long_term']];
+function buildRangeChips() {
+  const el = $('#rangeChips');
+  RANGES.forEach(([label, val]) => {
+    const c = document.createElement('button');
+    c.type = 'button'; c.className = 'chip' + (val === TASTE_RANGE ? ' on' : ''); c.textContent = label;
+    c.addEventListener('click', () => {
+      TASTE_RANGE = val;
+      el.querySelectorAll('.chip').forEach(o => o.classList.toggle('on', o === c));
+      if (store.get('sp_access')) loadTaste();
+    });
+    el.appendChild(c);
+  });
+}
+async function loadTaste() {
+  $('#tasteBox').hidden = false;
+  $('#tasteBox').textContent = 'Carregando seus dados…';
+  try {
+    const [a, t] = await Promise.all([
+      api('/me/top/artists?limit=20&time_range=' + TASTE_RANGE),
+      api('/me/top/tracks?limit=20&time_range=' + TASTE_RANGE)
+    ]);
+    const recent = [];
+    try {
+      const r = await api('/me/player/recently-played?limit=50');
+      const seen = new Set();
+      r.items.forEach(i => { const tr = i.track; if (tr && !seen.has(tr.id)) { seen.add(tr.id); recent.push(tr); } });
+    } catch (e) {}
+    const box = $('#tasteData'); box.textContent = '';
+    if (!a.items.length && !t.items.length) { $('#tasteBox').textContent = 'Ainda não há dados suficientes neste período. Tente "Desde sempre".'; return; }
+    $('#tasteBox').hidden = true;
+    box.appendChild(card('Artistas mais ouvidos', a.items.map(x => [x.name, (x.genres || []).slice(0, 2).join(', '), x.images])));
+    box.appendChild(card('Músicas mais ouvidas', t.items.map(x => [x.name, x.artists.map(r => r.name).join(', '), x.album?.images])));
+    if (recent.length) {
+      const c = card('Tocadas recentemente', recent.slice(0, 20).map(x => [x.name, x.artists.map(r => r.name).join(', '), x.album?.images]));
+      c.classList.add('wide'); box.appendChild(c);
+    }
+  } catch (e) { $('#tasteBox').textContent = 'Não consegui carregar seus dados (' + e.message + ').'; }
+}
+
+// ===== Personalização (foto, fundo, cor) - salvo só no seu navegador =====
+const ACCENTS = [['Verde', '#22e58b'], ['Roxo', '#a78bfa'], ['Rosa', '#ff5fa2'], ['Azul', '#38bdf8']];
+function applyCustom() {
+  const av = store.get('cu_avatar'), bg = store.get('cu_bg'), ac = store.get('cu_accent') || '#22e58b';
+  $('#avatar').style.backgroundImage = av ? 'url("' + av + '")' : '';
+  document.body.style.setProperty('--bgimg', bg ? 'url("' + bg + '")' : 'none');
+  document.documentElement.style.setProperty('--green', ac);
+  $$('#swatches button').forEach(b => b.classList.toggle('on', b.dataset.c === ac));
+}
+function readImage(file, max, square) {
+  return new Promise((ok, fail) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const s = Math.min(img.width, img.height);
+      const w = square ? max : Math.min(max, img.width);
+      const h = square ? max : Math.round(img.height * w / img.width);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const x = c.getContext('2d');
+      if (square) x.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, max, max);
+      else x.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      ok(c.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => fail(new Error('imagem inválida'));
+    img.src = url;
+  });
+}
+function bindImage(inputId, key, max, square, msg) {
+  $(inputId).addEventListener('change', async e => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try {
+      const data = await readImage(f, max, square);
+      store.set(key, data);
+      if (store.get(key) !== data) return toast('Imagem grande demais para salvar.');
+      applyCustom(); toast(msg);
+    } catch (err) { toast('Não consegui usar essa imagem.'); }
+  });
+}
+bindImage('#avatarFile', 'cu_avatar', 256, true, 'Foto atualizada.');
+bindImage('#bgFile', 'cu_bg', 1280, false, 'Fundo atualizado.');
+$('#resetCustom').addEventListener('click', () => { ['cu_avatar', 'cu_bg', 'cu_accent'].forEach(store.del); applyCustom(); toast('Visual restaurado.'); });
+ACCENTS.forEach(([name, col]) => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.title = name; b.setAttribute('aria-label', name); b.dataset.c = col; b.style.background = col;
+  b.addEventListener('click', () => { store.set('cu_accent', col); applyCustom(); });
+  $('#swatches').appendChild(b);
+});
+$('#avatar').addEventListener('click', () => show('taste'));
+buildRangeChips();
+applyCustom();
+
+// ===== Etapa 4: entender o pedido em linguagem natural (sem IA paga) =====
+const GENRE_WORDS = ['gospel','trap','sofrência','hip hop','rap','funk','sertanejo','mpb','pagode','samba','forró','piseiro','reggae','rock','pop','metal','indie','jazz','blues','eletrônica','lo-fi','r&b','clássica','drill','k-pop','reggaeton'];
+const MOOD_WORDS = { 'energética': ['energ','anima','treino','academia','pesad'], 'relaxante': ['relax','calm','tranquil','dormir'], 'feliz': ['feliz','alegr'], 'melancólica': ['triste','melanc'], 'focada': ['foco','focad','estud','trabalh'], 'romântica': ['romant','amor'], 'festa': ['festa','balada'] };
+const escRe = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+function parsePrompt(text) {
+  const t = norm(text);
+  const qm = text.match(/(\d[\d.]*)\s*(?:m[úu]sicas?|faixas?|songs?)/i);
+  const qty = qm ? parseInt(qm[1].replace(/\./g, ''), 10) : null;
+  const genres = GENRE_WORDS.filter(g => new RegExp('(^|[^a-z])' + escRe(norm(g)) + '([^a-z]|$)').test(t));
+  const moods = Object.keys(MOOD_WORDS).filter(m => MOOD_WORDS[m].some(w => t.includes(norm(w))));
+  let names = [];
+  const tm = text.match(/(?:parecid[oa]s?\s+com|similares?\s+a|semelhantes?\s+a|tipo|como|artistas?\s+(?:de|:))\s+(.+)/i);
+  if (tm) {
+    const seg = tm[1].split(/\.\s|\.$|[!?\n]|\bfa[çc]a\b|\bcom\s+\d|\bpara\b|\bque\b/i)[0];
+    names = seg.split(/\s*(?:,|;|\/|&|\s+e\s+)\s*/i).map(x => x.trim()).filter(x => x.length > 1 && x.length < 40 && !/\d/.test(x));
+    names = [...new Set(names)].slice(0, 12);
+  }
+  return { qty, genres, moods, names };
+}
+async function resolveArtist(name) {
+  const d = await api('/search?q=' + encodeURIComponent(name) + '&type=artist&limit=5');
+  const items = (d.artists?.items || []).filter(Boolean), n = norm(name);
+  return items.find(a => norm(a.name) === n) ||
+    items.find(a => norm(a.name).length >= 3 && (norm(a.name).includes(n) || n.includes(norm(a.name)))) || null;
+}
+// (Criar playlist está ligado na seção v3, mais abaixo)
+// ===== Diagnóstico (somente leitura) =====
+let DIAG_TEXT = '';
+async function timed(fn) {
+  const t0 = performance.now();
+  try { const v = await fn(); return { ok: true, v, ms: Math.round(performance.now() - t0) }; }
+  catch (e) { return { ok: false, err: e.message, ms: Math.round(performance.now() - t0) }; }
+}
+async function runDiag() {
+  if (!store.get('sp_access')) return toast('Conecte o Spotify na tela Início.');
+  const out = $('#diagOut'); out.textContent = '';
+  const lines = [];
+  const add = (icon, label, detail) => {
+    lines.push(icon + ' ' + label + ': ' + detail);
+    const p = document.createElement('p');
+    const b = document.createElement('b'); b.textContent = icon + ' ' + label + ': ';
+    p.appendChild(b); p.appendChild(document.createTextNode(detail)); out.appendChild(p);
+  };
+  $('#diagRun').disabled = true; $('#diagCopy').hidden = true;
+  const before = REQ.total;
+  try {
+    let r = await timed(() => api('/me'));
+    r.ok ? add('✅', 'Login', 'ok (' + r.ms + ' ms). Campos do perfil: ' + Object.keys(r.v).join(', ')) : add('❌', 'Login', r.err);
+    { const sc = store.get('sp_scope') || '';
+      add(/playlist-modify-private/.test(sc) && /playlist-modify-public/.test(sc) && /playlist-read-private/.test(sc) ? '✅' : '⚠️', 'Permissões concedidas', sc || 'não registradas: toque em Sair da conta e conecte de novo'); }
+    if (!r.ok) throw new Error('parado');
+
+    await sleep(150);
+    r = await timed(() => api('/me/top/artists?limit=20&time_range=long_term'));
+    if (r.ok) {
+      const it = r.v.items, withG = it.filter(a => a.genres && a.genres.length).length;
+      add(withG ? '✅' : '⚠️', 'Gêneros dos artistas', it.length + ' artistas, ' + withG + ' com gênero' + (withG ? '' : ' (o Spotify não está enviando gêneros)'));
+    } else add('❌', 'Top artistas', r.err);
+
+    await sleep(150);
+    r = await timed(() => api('/me/top/tracks?limit=10&time_range=long_term'));
+    if (r.ok) {
+      const it = r.v.items;
+      add('✅', 'Top músicas', it.length + ' músicas. Com data do álbum: ' + it.filter(t => t.album && t.album.release_date).length +
+        '. Com popularidade: ' + it.filter(t => t.popularity !== undefined).length + ' (esperado 0)');
+    } else add('❌', 'Top músicas', r.err);
+
+    await sleep(150);
+    r = await timed(() => api('/me/player/recently-played?limit=10'));
+    r.ok ? add('✅', 'Tocadas recentemente', r.v.items.length + ' itens') : add('❌', 'Tocadas recentemente', r.err);
+
+    await sleep(150);
+    r = await timed(() => api('/search?q=trap&type=track,artist&limit=10'));
+    r.ok ? add('✅', 'Busca (limite 10)', (r.v.tracks?.items.length || 0) + ' músicas e ' + (r.v.artists?.items.length || 0) + ' artistas em ' + r.ms + ' ms') : add('❌', 'Busca', r.err);
+
+    await sleep(150);
+    r = await timed(() => api('/search?q=trap&type=track&limit=10&offset=990'));
+    r.ok ? add('✅', 'Profundidade da busca', 'offset 990 funcionou (' + (r.v.tracks?.items.length || 0) + ' itens)') : add('⚠️', 'Profundidade da busca', 'offset 990 falhou: ' + r.err);
+
+    const seen = new Set();
+    for (const g of ['funk', 'gospel', 'trap', 'forró', 'sofrência', 'sertanejo']) {
+      await sleep(150);
+      r = await timed(() => api('/search?q=' + encodeURIComponent('genre:"' + g + '"') + '&type=artist&limit=10'));
+      if (!r.ok) { add('❌', 'Gênero "' + g + '"', r.err); continue; }
+      const it = (r.v.artists?.items || []).filter(Boolean);
+      it.forEach(a => (a.genres || []).forEach(x => seen.add(x)));
+      add(it.length ? '✅' : '⚠️', 'Gênero "' + g + '"', it.length ? it.length + ' artistas (ex: ' + it.slice(0, 3).map(a => a.name).join(', ') + ')' : 'nenhum resultado com esse nome');
+    }
+    add(seen.size ? '✅' : '⚠️', 'Nomes de gênero vistos', seen.size ? [...seen].slice(0, 25).join(', ') : 'nenhum (artistas vieram sem gênero)');
+
+    await sleep(150);
+    r = await timed(() => api('/me/playlists?limit=5'));
+    r.ok ? add('✅', 'Suas playlists', 'leitura ok, total ' + (r.v.total ?? '?')) : add('❌', 'Suas playlists', r.err);
+  } catch (e) { if (e.message !== 'parado') add('❌', 'Teste interrompido', e.message); }
+  const now = Date.now();
+  add(REQ.last429 ? '⚠️' : '✅', 'Requisições', (REQ.total - before) + ' neste teste, ' + REQ.total + ' nesta sessão, ' +
+    REQ.times.filter(t => now - t < 30000).length + ' nos últimos 30 s. ' +
+    (REQ.last429 ? 'Último 429: espera ' + REQ.last429.wait + ' s' + (REQ.last429.reason ? ' (' + REQ.last429.reason + ')' : '') : 'Nenhum 429.'));
+  DIAG_TEXT = 'MUSIC AI v2 — diagnóstico\n' + lines.join('\n');
+  $('#diagRun').disabled = false; $('#diagCopy').hidden = false;
+}
+$('#diagRun').addEventListener('click', runDiag);
+$('#diagRenew').addEventListener('click', async () => {
+  if (!store.get('sp_access')) return toast('Conecte o Spotify na tela Início.');
+  const old = store.get('sp_access'), oldR = store.get('sp_refresh'), out = $('#diagOut'); out.textContent = '';
+  store.set('sp_expires', '0');
+  try {
+    await api('/me');
+    const changed = store.get('sp_access') !== old;
+    out.appendChild(el('p', '', (changed ? '✅ Renovação funcionou: o Spotify deu um token novo e ele foi usado.' : '⚠️ A chamada funcionou, mas o token não mudou.') + (store.get('sp_refresh') !== oldR ? ' O Spotify também trocou o refresh token (já salvo).' : '')));
+  } catch (e) { out.appendChild(el('p', '', '❌ A renovação falhou: ' + e.message + '.')); }
+});
+$('#diagCopy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(DIAG_TEXT); toast('Relatório copiado.'); }
+  catch (e) { toast('Não consegui copiar. Tire um print.'); }
+});
+// ===== v3: geração real de playlists, prévia, biblioteca e Spotify =====
+const tkey = (name, artist) => norm(String(name).replace(/\s*[\(\[]\s*(?:feat|ft|com|with|part)[^\)\]]*[\)\]]/ig, '')) + '|' + norm(artist || '');
+const fmtDur = ms => { const m = Math.round(ms / 60000); return m >= 60 ? Math.floor(m / 60) + ' h ' + (m % 60) + ' min' : m + ' min'; };
+const cap1 = x => x.charAt(0).toUpperCase() + x.slice(1);
+function mapTrack(t, src, g) {
+  return { id: t.id, uri: t.uri || 'spotify:track:' + t.id, name: t.name, artists: t.artists.map(a => a.name), artistIds: t.artists.map(a => a.id),
+    album: t.album?.name || '', img: (t.album?.images || []).slice(-1)[0]?.url || '', dur: t.duration_ms || 0, year: (t.album?.release_date || '').slice(0, 4),
+    url: t.external_urls?.spotify || 'https://open.spotify.com/track/' + t.id, src: src || '', g: g || '' };
+}
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+async function copyText(txt, okMsg) {
+  try { await navigator.clipboard.writeText(txt); toast(okMsg); }
+  catch (e) {
+    const ta = el('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast(okMsg); } catch (e2) { toast('Não consegui copiar.'); }
+    ta.remove();
+  }
+}
+
+// ---------- armazenamento local (IndexedDB) ----------
+const DB = {
+  db: null,
+  open() { return DB.db ? Promise.resolve(DB.db) : new Promise((ok, fail) => {
+    const r = indexedDB.open('musicai', 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore('playlists', { keyPath: 'id' }); r.result.createObjectStore('kv'); };
+    r.onsuccess = () => { DB.db = r.result; ok(DB.db); }; r.onerror = () => fail(r.error);
+  }); },
+  async run(st, mode, fn) { const db = await DB.open(); return new Promise((ok, fail) => { const tx = db.transaction(st, mode); const rq = fn(tx.objectStore(st)); tx.oncomplete = () => ok(rq && rq.result); tx.onerror = () => fail(tx.error); }); },
+  all() { return DB.run('playlists', 'readonly', x => x.getAll()); },
+  put(p) { return DB.run('playlists', 'readwrite', x => x.put(p)); },
+  del(id) { return DB.run('playlists', 'readwrite', x => x.delete(id)); },
+  get(k) { return DB.run('kv', 'readonly', x => x.get(k)); },
+  set(k, v) { return DB.run('kv', 'readwrite', x => x.put(v, k)); }
+};
+let DRAFT = null, saveT;
+function persistDraft() { clearTimeout(saveT); saveT = setTimeout(() => { if (DRAFT) DB.set('draft', DRAFT).catch(() => {}); }, 400); }
+function updateDraftBtn() { $('#openDraft').hidden = !(DRAFT && DRAFT.tracks.length); }
+
+// ---------- interpretação do pedido (regras próprias) ----------
+function extraParse(text) {
+  const t = norm(text), r = { unknown: [] };
+  const dm = t.match(/anos\s*(\d{2,4})/);
+  if (dm) { let y = parseInt(dm[1], 10); if (y < 100) y += y >= 30 ? 1900 : 2000; if (y % 10 === 0) r.year = y + '-' + (y + 9); }
+  if (!r.year) { const ym = t.match(/\b(19\d\d|20\d\d)\b/); if (ym) r.year = ym[1]; }
+  const w = {};
+  GENRE_WORDS.forEach(g => { const m = t.match(new RegExp('(\\d{1,3})\\s*%\\s*(?:de\\s+)?' + escRe(norm(g)) + '(?![a-z])')); if (m) w[g] = +m[1]; });
+  const tot = Object.values(w).reduce((a, b) => a + b, 0);
+  if (tot) { for (const g in w) w[g] /= tot; r.weights = w; }
+  if (/(pouco|menos|nada)\s+conhecid|desconhecid/.test(t)) r.unknown.push('"pouco conhecidas": o Spotify não informa popularidade, então não consigo filtrar isso');
+  return r;
+}
+function reqFromText(text) {
+  const p = parsePrompt(text), x = extraParse(text);
+  const genres = [...new Set([...(x.weights ? Object.keys(x.weights) : []), ...p.genres])];
+  return { text, qty: p.qty || 30, genres, weights: x.weights || null, moods: p.moods, names: p.names, year: x.year || null, unknown: x.unknown,
+    useTaste: $('#useTasteHome').checked, noRepeat: /sem repetir|n[ãa]o repit|j[áa] (tenho|ouvi)/i.test(text), best: false };
+}
+function reqFromForm() {
+  return { text: '', qty: Math.max(1, parseInt($('#countInput').value, 10) || 30), genres: selected('#createGenres'), weights: null, moods: selected('#moods'),
+    names: $('#artistsInput').value.split(/[,;]/).map(x => x.trim()).filter(Boolean).slice(0, 12), year: null, unknown: [],
+    useTaste: $('#useTaste').checked, noRepeat: $('#noRepeat').checked, best: $('#bestOf').checked };
+}
+$('#useTasteHome').addEventListener('change', e => { $('#useTaste').checked = e.target.checked; });
+$('#useTaste').addEventListener('change', e => { $('#useTasteHome').checked = e.target.checked; });
+
+// ---------- motor de busca ----------
+const GEN = { running: false, stop: false };
+function resetGen(req) {
+  Object.assign(GEN, { req, sources: [], pool: [], seen: new Set(), keys: new Set(), artistSrc: new Set(), artistCount: {}, genreCount: {}, quota: {}, collab: {},
+    collabDone: false, reqCount: 0, cap: 0, dups: 0, stop: false, ex: { ids: new Set(), keys: new Set() }, bySrc: {}, notes: [], perArtist: 8, why: '', refs: [], lost: [], exInfo: '' });
+}
+function addArtistSource(a, w, tag, g, ref) {
+  if (GEN.artistSrc.has(a.id)) return;
+  GEN.artistSrc.add(a.id);
+  GEN.sources.push({ type: 'track', artistId: a.id, g, ref, tag, w, pages: 0, maxPages: GEN.req.best ? 1 : 30,
+    q: () => 'artist:"' + a.name.replace(/"/g, '') + '"' + (GEN.req.year ? ' year:' + GEN.req.year : '') });
+}
+function accept(t, s) {
+  if (s.artistId && !t.artists.some(a => a.id === s.artistId)) return;
+  if (s.ref) t.artists.forEach(a => { if (a.id !== s.artistId) { const c = GEN.collab[a.id] || (GEN.collab[a.id] = { name: a.name, n: 0 }); c.n++; } });
+  const yr = (t.album?.release_date || '').slice(0, 4);
+  if (GEN.req.year && yr) { const [a, b] = GEN.req.year.split('-').map(Number); if (+yr < a || +yr > (b || a)) return; }
+  const key = tkey(t.name, t.artists[0]?.name);
+  if (GEN.seen.has(t.id) || GEN.keys.has(key) || GEN.ex.ids.has(t.id) || GEN.ex.keys.has(key)) { GEN.dups++; return; }
+  const aid = t.artists[0]?.id;
+  if ((GEN.artistCount[aid] || 0) >= GEN.perArtist) return;
+  if (GEN.req.weights && s.g && (GEN.genreCount[s.g] || 0) >= (GEN.quota[s.g] || 1e9)) return;
+  GEN.seen.add(t.id); GEN.keys.add(key); GEN.artistCount[aid] = (GEN.artistCount[aid] || 0) + 1;
+  if (s.g) GEN.genreCount[s.g] = (GEN.genreCount[s.g] || 0) + 1;
+  GEN.bySrc[s.tag] = (GEN.bySrc[s.tag] || 0) + 1;
+  GEN.pool.push(mapTrack(t, s.tag, s.g));
+}
+async function fetchSource(s) {
+  const off = s.pages * 10;
+  const d = await api('/search?q=' + encodeURIComponent(s.q()) + '&type=' + s.type + '&limit=10&offset=' + off);
+  GEN.reqCount++; s.pages++;
+  const items = ((s.type === 'track' ? d.tracks : d.artists)?.items || []).filter(Boolean);
+  if (!items.length || off + 10 >= 990 || (s.maxPages && s.pages >= s.maxPages)) s.done = true;
+  if (s.type === 'track') items.forEach(t => accept(t, s)); else items.forEach(a => addArtistSource(a, 1, 'gênero ' + (s.g || ''), s.g));
+}
+const STEPS = ['Interpretando seu pedido', 'Identificando artistas e gêneros', 'Pesquisando músicas', 'Conferindo resultados', 'Removendo duplicatas', 'Organizando a playlist', 'Preparando a prévia'];
+function setStep(i) {
+  const ol = $('#pvSteps'); ol.textContent = '';
+  STEPS.forEach((t, k) => ol.appendChild(el('li', k < i ? 'ok' : k === i ? 'on' : '', (k < i ? '✓ ' : k === i ? '… ' : '') + (k + 1) + '. ' + t)));
+  $('#pvStep').textContent = STEPS[Math.min(i, STEPS.length - 1)];
+}
+function progress(want) {
+  $('#pvBar').style.width = Math.min(100, Math.round(GEN.pool.length / want * 100)) + '%';
+  $('#pvCount').textContent = 'Encontradas ' + GEN.pool.length + ' de ' + want + ' · faltam ' + Math.max(0, want - GEN.pool.length) + ' · requisições ' + GEN.reqCount + '/' + GEN.cap + ' · repetidas ignoradas ' + GEN.dups;
+}
+async function gather(want) {
+  while (!GEN.stop && GEN.pool.length < want && GEN.reqCount < GEN.cap) {
+    if (!GEN.collabDone && GEN.sources.filter(x => x.ref).every(x => x.done || x.pages >= 2)) {
+      GEN.collabDone = true;
+      Object.entries(GEN.collab).sort((a, b) => b[1].n - a[1].n).slice(0, 10).forEach(([id, c]) => addArtistSource({ id, name: c.name }, 1.5, 'colaborador'));
+    }
+    const live = GEN.sources.filter(x => !x.done);
+    if (!live.length) { GEN.why = 'as fontes de busca acabaram'; return; }
+    live.sort((a, b) => a.pages / a.w - b.pages / b.w);
+    await fetchSource(live[0]);
+    progress(want); await sleep(REQ.last429 && Date.now() - REQ.last429.at < 120000 ? 1200 : 300);
+  }
+  GEN.why = GEN.stop ? 'você parou a busca' : GEN.pool.length >= want ? '' : 'limite de segurança de ' + GEN.cap + ' requisições';
+}
+async function loadExcluded() {
+  try { (await DB.all()).forEach(p => p.tracks.forEach(t => { GEN.ex.ids.add(t.id); GEN.ex.keys.add(tkey(t.name, t.artists[0])); })); } catch (e) {}
+  let n = 0, reqs = 0;
+  try {
+    const me = await api('/me'); reqs++;
+    const pls = await api('/me/playlists?limit=50'); reqs++;
+    for (const p of (pls.items || []).filter(x => x && x.owner?.id === me.id)) {
+      for (let off = 0; reqs < 40; off += 50) {
+        const d = await api('/playlists/' + p.id + '/items?limit=50&offset=' + off); reqs++;
+        const its = d.items || [];
+        its.forEach(x => { const it = x.item || x.track; if (it && it.id) { GEN.ex.ids.add(it.id); GEN.ex.keys.add(tkey(it.name, it.artists?.[0]?.name)); } });
+        if (its.length < 50) break;
+      }
+      n++; if (reqs >= 40) break;
+    }
+    GEN.exInfo = 'Conferi ' + n + ' playlist(s) suas no Spotify e a biblioteca do MUSIC AI.';
+  } catch (e) { GEN.exInfo = 'Não consegui ler suas playlists do Spotify (' + e.message + '). Usei só a biblioteca do MUSIC AI.'; }
+  GEN.reqCount += reqs;
+}
+async function prepareSources(req) {
+  const qty = req.qty;
+  for (const name of req.names) {
+    const a = await resolveArtist(name).catch(() => null); GEN.reqCount++;
+    a ? GEN.refs.push(a) : GEN.lost.push(name); await sleep(200);
+  }
+  GEN.refs.forEach(a => addArtistSource(a, 3, 'artista de referência', null, true));
+  if (req.useTaste) {
+    try {
+      const top = (await api('/me/top/artists?limit=10&time_range=medium_term')).items || []; GEN.reqCount++;
+      top.slice(0, GEN.refs.length ? 3 : 5).forEach(a => addArtistSource(a, GEN.refs.length ? 1 : 3, 'seu gosto', null, !GEN.refs.length));
+    } catch (e) { GEN.notes.push('Não consegui ler seu gosto musical (' + e.message + ').'); }
+  }
+  const eq = 1 / Math.max(1, req.genres.length);
+  req.genres.forEach(g => {
+    if (req.weights) GEN.quota[g] = Math.ceil(qty * (req.weights[g] || eq));
+    const w = req.weights ? (req.weights[g] || eq) * req.genres.length : 1;
+    GEN.sources.push({ type: 'artist', g, tag: 'gênero ' + g, w: 1.2 * w, pages: 0, maxPages: 4, q: () => 'genre:"' + g + '"' });
+    GEN.sources.push({ type: 'track', g, tag: 'busca por texto', w: 0.5 * w, pages: 0, maxPages: 20, q: () => g + (req.year ? ' year:' + req.year : '') });
+  });
+  GEN.perArtist = req.best ? 10 : Math.max(8, Math.ceil(qty * 0.2));
+  // poucos artistas de referência: deixa cada um cobrir pelo menos 60% do pedido (o resto vem de colaboradores e gêneros)
+  if (!req.best && GEN.refs.length && GEN.refs.length * GEN.perArtist < qty * 0.6) GEN.perArtist = Math.ceil(qty * 0.6 / GEN.refs.length);
+  if (req.noRepeat) await loadExcluded();
+  GEN.cap = Math.min(450, GEN.reqCount + 40 + Math.ceil(qty / 3));
+}
+function interpCard(req) {
+  const c = el('div', 'tcard'); c.appendChild(el('h2', '', 'Entendi assim'));
+  const line = (a, b) => { const p = el('p'); p.appendChild(el('b', '', a + ': ')); p.appendChild(document.createTextNode(b)); c.appendChild(p); };
+  line('Quantidade', req.qty + ' músicas');
+  line('Gêneros', req.genres.length ? req.genres.map(g => g + (req.weights ? ' ' + Math.round(req.weights[g] * 100) + '%' : '')).join(', ') : 'nenhum');
+  if (req.year) line('Período', req.year);
+  if (req.names.length) line('Artistas citados', req.names.join(', '));
+  if (req.useTaste) line('Seu gosto', 'ligado');
+  if (req.noRepeat) line('Evitar repetidas', 'ligado');
+  if (req.moods.length) line('Clima', req.moods.join(', ') + ' (serve só como rótulo: o Spotify não mede energia nem humor das músicas)');
+  req.unknown.forEach(u => line('Não consigo aplicar', u));
+  return c;
+}
+function resultCard(title, rows) {
+  const c = el('div', 'tcard'); c.appendChild(el('h2', '', title));
+  rows.filter(Boolean).forEach(r => c.appendChild(el('p', '', r)));
+  return c;
+}
+function organize(list) {
+  const g = {}; list.forEach(t => (g[t.artistIds[0]] = g[t.artistIds[0]] || []).push(t));
+  const groups = Object.values(g), out = []; let prev = null;
+  while (out.length < list.length) {
+    groups.sort((a, b) => b.length - a.length);
+    const pick = groups.find(x => x.length && x[0].artistIds[0] !== prev) || groups.find(x => x.length);
+    const t = pick.shift(); out.push(t); prev = t.artistIds[0];
+  }
+  return out;
+}
+const autoName = r => (r.genres.length ? r.genres.map(cap1).join(' + ') : (r.names.slice(0, 2).join(' + ') || 'Meu gosto')) + (r.year ? ' · ' + r.year : '');
+const autoDesc = (r, n) => ('Criada pelo MUSIC AI · ' + n + ' músicas' + (r.names.length ? ' · parecidas com ' + r.names.slice(0, 4).join(', ') : '')).slice(0, 290);
+
+async function generate(req, more) {
+  if (GEN.running) return toast('Já estou gerando. Aguarde ou toque em Parar.');
+  if (!store.get('sp_access')) return toast('Conecte o Spotify na tela Início.');
+  if (!more && !req.genres.length && !req.names.length && !req.useTaste) return toast('Não identifiquei gêneros nem artistas. Cite artistas ("parecidos com X"), escolha gêneros ou ative "Usar meu gosto musical".');
+  if (!more && req.qty > 300 && !confirm('Playlist grande: pode usar até ' + Math.min(450, 40 + Math.ceil(req.qty / 3)) + ' requisições e levar alguns minutos. Continuar?')) return;
+  GEN.running = true; show('preview');
+  $('#pvProg').hidden = false; $('#pvStop').disabled = false;
+  if (!more) $('#pvMain').hidden = true;
+  if (more !== 'spare') $('#pvInfo').textContent = '';
+  let need = req.qty;
+  try {
+    if (!more) {
+      resetGen(req); setStep(0); $('#pvInfo').appendChild(interpCard(req)); progress(need);
+      setStep(1); await prepareSources(req);
+      if (GEN.lost.length) GEN.notes.push('Não encontrei no Spotify: ' + GEN.lost.join(', ') + '.');
+      if (!GEN.sources.length) throw new Error('nenhuma fonte de busca (os artistas citados não foram encontrados no Spotify)');
+    } else {
+      if (GEN.req !== DRAFT.req) {
+        resetGen(DRAFT.req);
+        [...DRAFT.tracks, ...(DRAFT.spare || [])].forEach(t => { GEN.seen.add(t.id); GEN.keys.add(tkey(t.name, t.artists[0])); GEN.artistCount[t.artistIds[0]] = (GEN.artistCount[t.artistIds[0]] || 0) + 1; });
+        (DRAFT.removed || []).forEach(id => GEN.seen.add(id));
+        setStep(1); await prepareSources(DRAFT.req);
+      } else { GEN.cap = GEN.reqCount + 60; GEN.collabDone = false; }
+      if (!GEN.sources.length) throw new Error('esta playlist não tem gêneros nem artistas guardados; use "Adicionar música" para incluir faixas');
+      need = more === 'spare' ? 10 : (DRAFT.tracks.length < DRAFT.req.qty ? DRAFT.req.qty - DRAFT.tracks.length : 20);
+    }
+    GEN.pool = []; GEN.stop = false;
+    const want = need + Math.min(30, Math.ceil(need * 0.1));
+    const r0 = GEN.reqCount;
+    setStep(2); await gather(want);
+    const used = GEN.reqCount - r0;
+    setStep(3); setStep(4); setStep(5);
+    const take = GEN.pool.slice(0, need), extra = GEN.pool.slice(need);
+    if (!more) {
+      DRAFT = { id: null, name: autoName(req), desc: autoDesc(req, take.length), tracks: organize(take), spare: extra, removed: [], req, created: Date.now(), sp: null, shown: 100 };
+    } else if (more === 'spare') { DRAFT.spare = (DRAFT.spare || []).concat(GEN.pool); }
+    else { DRAFT.tracks = DRAFT.tracks.concat(take); DRAFT.spare = (DRAFT.spare || []).concat(extra); }
+    setStep(6);
+    const r = DRAFT.req, got = take.length;
+    const src = Object.entries(GEN.bySrc).map(([k, v]) => k + ': ' + v).join(' · ');
+    if (more !== 'spare') $('#pvInfo').appendChild(resultCard(got >= need ? 'Pronto' : 'Encontrei menos do que o pedido',
+      [more ? 'Adicionei ' + got + ' músicas (total ' + DRAFT.tracks.length + ').' : 'Encontrei ' + got + ' de ' + need + ' músicas.',
+       got < need ? 'Motivo: ' + GEN.why + '. Toque em "+ Adicionar mais" para continuar buscando.' : '',
+       src ? 'Origem: ' + src : '', 'Requisições usadas: ' + GEN.reqCount + ' (' + used + ' na busca de músicas' + (used && got ? '; rendimento ' + (got / used).toFixed(1) + ' músicas por requisição; para 1.000 músicas estimo ~' + Math.ceil(1000 / (got / used)) + ' requisições' : '') + '). Repetidas ignoradas: ' + GEN.dups + '.', GEN.exInfo, ...GEN.notes,
+       'Cada música veio de uma busca real no Spotify. Quem cita um artista só entra se o artista está nos créditos da faixa.']));
+    persistDraft(); updateDraftBtn(); renderPreview();
+  } catch (e) {
+    if (!more && GEN.pool.length) {
+      const take = GEN.pool.slice(0, need);
+      DRAFT = { id: null, name: autoName(req), desc: autoDesc(req, take.length), tracks: organize(take), spare: GEN.pool.slice(need), removed: [], req, created: Date.now(), sp: null, shown: 100 };
+      persistDraft(); updateDraftBtn(); renderPreview();
+    }
+    $('#pvInfo').appendChild(resultCard('A busca parou por um erro', ['O que aconteceu: ' + e.message + '.', GEN.pool.length ? 'Guardei as ' + GEN.pool.length + ' músicas já encontradas. Use "+ Adicionar mais" para continuar.' : 'Nada foi perdido do seu pedido. Tente novamente.']));
+  } finally { GEN.running = false; $('#pvProg').hidden = true; }
+}
+$('#pvStop').addEventListener('click', () => { GEN.stop = true; $('#pvStop').disabled = true; });
+$('#promptGo').addEventListener('click', () => { const t = $('#promptInput').value.trim(); if (!t) return toast('Escreva o que você quer ouvir.'); generate(reqFromText(t), false); });
+$('#previewBtn').addEventListener('click', () => generate(reqFromForm(), false));
+$('#openDraft').addEventListener('click', () => { renderPreview(); show('preview'); });
+
+// ---------- prévia: editar ----------
+function trackRow(t, i, dup) {
+  const li = el('li', 'r'); li.appendChild(el('i', 'rk', i + 1)); li.appendChild(thumb(t.img ? [{ url: t.img }] : null));
+  const d = el('div'); d.appendChild(el('b', '', t.name));
+  d.appendChild(el('small', '', t.artists.join(', ') + ' · ' + t.album + (t.dur ? ' · ' + fmtDur(t.dur).replace(' min', ' min') : '') + (t.src ? ' · via ' + t.src : '')));
+  const act = el('div', 'tact');
+  const b = (txt, fn, cls) => { const x = el('button', cls || '', txt); x.type = 'button'; x.addEventListener('click', fn); act.appendChild(x); };
+  b('▲', () => moveAt(i, -1)); b('▼', () => moveAt(i, 1)); b('↻ Trocar', () => replaceAt(i)); b('✕ Remover', () => removeAt(i));
+  const a = el('a', '', '▶ Spotify'); a.href = t.url; a.target = '_blank'; a.rel = 'noopener'; act.appendChild(a);
+  if (dup) act.appendChild(el('span', 'warn', '⚠ possível duplicata'));
+  d.appendChild(act); li.appendChild(d); return li;
+}
+function renderPreview() {
+  const d = DRAFT; if (!d) return;
+  $('#pvMain').hidden = false; $('#pvName').value = d.name; $('#pvDesc').value = d.desc;
+  const dur = d.tracks.reduce((a, t) => a + (t.dur || 0), 0);
+  $('#pvStats').textContent = d.tracks.length + ' músicas' + (dur ? ' · cerca de ' + fmtDur(dur) : '') + (d.req?.qty && d.tracks.length < d.req.qty ? ' (você pediu ' + d.req.qty + ')' : '');
+  const ol = $('#pvTracks'); ol.textContent = ''; const cnt = {};
+  d.tracks.forEach(t => { const k = tkey(t.name, t.artists[0]); cnt[k] = (cnt[k] || 0) + 1; });
+  d.tracks.slice(0, d.shown || 100).forEach((t, i) => ol.appendChild(trackRow(t, i, cnt[tkey(t.name, t.artists[0])] > 1)));
+  $('#pvShowMore').hidden = d.tracks.length <= (d.shown || 100);
+  renderSp();
+}
+function touch() { persistDraft(); updateDraftBtn(); renderPreview(); }
+function removeAt(i) { const t = DRAFT.tracks.splice(i, 1)[0]; (DRAFT.removed = DRAFT.removed || []).push(t.id); touch(); }
+function moveAt(i, dir) { const j = i + dir, a = DRAFT.tracks; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; touch(); }
+async function replaceAt(i) {
+  const take = () => { const n = [DRAFT.tracks[i - 1], DRAFT.tracks[i + 1]].filter(Boolean).map(t => t.artistIds[0]); const sp = DRAFT.spare || []; let k = sp.findIndex(t => !n.includes(t.artistIds[0])); if (k < 0) k = 0; return sp.length ? sp.splice(k, 1)[0] : null; };
+  let n = take();
+  if (!n) { toast('Buscando uma substituta…'); const before = DRAFT.tracks.length; await generate(DRAFT.req, 'spare'); n = take(); }
+  if (!n) return toast('Não achei uma substituta agora.');
+  const old = DRAFT.tracks[i]; (DRAFT.removed = DRAFT.removed || []).push(old.id); DRAFT.tracks[i] = n; touch(); toast('Trocada por "' + n.name + '".');
+}
+$('#pvName').addEventListener('input', e => { if (DRAFT) { DRAFT.name = e.target.value; persistDraft(); } });
+$('#pvDesc').addEventListener('input', e => { if (DRAFT) { DRAFT.desc = e.target.value; persistDraft(); } });
+$('#pvShuffle').addEventListener('click', () => { const a = DRAFT.tracks; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } touch(); });
+$('#pvOrg').addEventListener('click', () => { DRAFT.tracks = organize(DRAFT.tracks); touch(); toast('Organizei para não repetir o mesmo artista em seguida.'); });
+$('#pvClear').addEventListener('click', () => { if (confirm('Remover todas as músicas da prévia?')) { DRAFT.removed = (DRAFT.removed || []).concat(DRAFT.tracks.map(t => t.id)); DRAFT.tracks = []; touch(); } });
+$('#pvRegen').addEventListener('click', () => { if (confirm('Gerar novamente? A prévia atual será substituída.')) generate(DRAFT.req, false); });
+$('#pvMore').addEventListener('click', () => generate(DRAFT.req, true));
+$('#pvShowMore').addEventListener('click', () => { DRAFT.shown = (DRAFT.shown || 100) + 100; renderPreview(); });
+$('#pvLinks').addEventListener('click', () => copyText(DRAFT.tracks.map(t => t.url).join('\n'), DRAFT.tracks.length + ' links copiados.'));
+$('#pvCopyList').addEventListener('click', () => copyText(DRAFT.tracks.map((t, i) => (i + 1) + '. ' + t.artists.join(', ') + ' - ' + t.name).join('\n'), 'Lista copiada.'));
+
+// adicionar música manualmente (prévia e Descobrir)
+function addToDraft(t) {
+  if (!DRAFT) DRAFT = { id: null, name: 'Minha playlist', desc: 'Criada pelo MUSIC AI', tracks: [], spare: [], removed: [], req: { qty: 30, genres: [], names: [], moods: [], unknown: [] }, created: Date.now(), sp: null, shown: 100 };
+  const m = mapTrack(t, 'adicionada por você'), k = tkey(m.name, m.artists[0]);
+  if (DRAFT.tracks.some(x => x.id === m.id || tkey(x.name, x.artists[0]) === k)) return toast('Essa música já está na prévia.');
+  DRAFT.tracks.push(m); persistDraft(); updateDraftBtn(); toast('Adicionada à prévia (' + DRAFT.tracks.length + ').');
+  if (!$('#pvMain').hidden) renderPreview();
+}
+function plusBtn(t) { const b = el('button', 'btn out small', '+ Prévia'); b.type = 'button'; b.addEventListener('click', () => addToDraft(t)); return b; }
+$('#pvQGo').addEventListener('click', async () => {
+  const q = $('#pvQ').value.trim(); if (!q) return;
+  const ol = $('#pvQRes'); ol.textContent = '';
+  try { const d = await api('/search?q=' + encodeURIComponent(q) + '&type=track&limit=10'); (d.tracks?.items || []).filter(Boolean).forEach(t => addRow(ol, t.name, t.artists.map(a => a.name).join(', '), t.album?.images, undefined, plusBtn(t))); if (!ol.children.length) ol.appendChild(el('p', '', 'Nada encontrado.')); }
+  catch (e) { toast('Erro na busca (' + e.message + ').'); }
+});
+
+// ---------- biblioteca local ----------
+function coverEl(tracks) { const c = el('div', 'cover'); const imgs = [...new Set(tracks.map(t => t.img).filter(Boolean))].slice(0, 4); imgs.forEach(u => { const i = el('img'); i.src = u; i.alt = ''; i.loading = 'lazy'; c.appendChild(i); }); return c; }
+async function saveLib() {
+  const d = DRAFT; if (!d || !d.tracks.length) return toast('A prévia está vazia.');
+  const rec = { id: d.id || 'pl_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: d.name || 'Minha playlist', desc: d.desc || '', created: d.created || Date.now(), updated: Date.now(), tracks: d.tracks, req: d.req, sp: d.sp, spotifyUrl: d.sp?.finished ? d.sp.url : '' };
+  try { await DB.put(rec); d.id = rec.id; persistDraft(); toast('Salva na biblioteca (' + rec.tracks.length + ' músicas).'); renderLib(); }
+  catch (e) { toast('Não consegui salvar neste navegador: ' + e.message); }
+}
+$('#pvSaveLib').addEventListener('click', saveLib);
+async function renderLib() {
+  let all = []; try { all = (await DB.all()).sort((a, b) => b.updated - a.updated); } catch (e) { toast('Não consegui abrir a biblioteca: ' + e.message); }
+  const q = norm($('#libSearch').value || ''), box = $('#libList'); box.textContent = '';
+  const list = all.filter(p => !q || norm(p.name).includes(q) || (p.req?.genres || []).some(g => norm(g).includes(q)) || p.tracks.some(t => t.artists.some(a => norm(a).includes(q))));
+  $('#libEmpty').hidden = list.length > 0; $('#libEmpty').textContent = all.length ? 'Nenhuma playlist encontrada nessa busca.' : 'Você ainda não salvou nenhuma playlist.';
+  list.forEach(p => {
+    const c = el('div', 'libcard'); c.appendChild(coverEl(p.tracks));
+    const t = el('div', 't'); t.appendChild(el('b', '', p.name));
+    const dur = p.tracks.reduce((a, x) => a + (x.dur || 0), 0);
+    t.appendChild(el('small', '', p.tracks.length + ' músicas' + (dur ? ' · ' + fmtDur(dur) : '') + ' · ' + new Date(p.created).toLocaleDateString('pt-BR')));
+    const cnt = {}; p.tracks.forEach(x => cnt[x.artists[0]] = (cnt[x.artists[0]] || 0) + 1);
+    t.appendChild(el('small', '', 'Artistas: ' + Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]).join(', ')));
+    if (p.req?.genres?.length) t.appendChild(el('small', '', 'Gêneros: ' + p.req.genres.join(', ')));
+    const act = el('div', 'tact');
+    const b = (txt, fn) => { const x = el('button', '', txt); x.type = 'button'; x.addEventListener('click', fn); act.appendChild(x); };
+    b('Abrir / editar', () => { DRAFT = { ...p, spare: [], removed: [], shown: 100, req: p.req || { qty: p.tracks.length, genres: [], names: [], moods: [], unknown: [] } }; $('#pvProg').hidden = true; $('#pvInfo').textContent = ''; updateDraftBtn(); renderPreview(); show('preview'); });
+    b('Excluir', async () => { if (confirm('Excluir "' + p.name + '"?')) { await DB.del(p.id); renderLib(); } });
+    if (p.spotifyUrl) { const a = el('a', '', 'Abrir no Spotify'); a.href = p.spotifyUrl; a.target = '_blank'; a.rel = 'noopener'; act.appendChild(a); }
+    t.appendChild(act); c.appendChild(t); box.appendChild(c);
+  });
+}
+$('#libSearch').addEventListener('input', renderLib);
+const cleanTrack = t => {
+  if (!t || typeof t.id !== 'string' || t.id.length > 64 || /\s/.test(t.id)) return null;
+  const sp = u => typeof u === 'string' && u.startsWith('https://open.spotify.com/');
+  return { id: t.id, uri: 'spotify:track:' + t.id, name: String(t.name || '').slice(0, 200), artists: (Array.isArray(t.artists) ? t.artists : []).map(x => String(x).slice(0, 100)).slice(0, 10),
+    artistIds: (Array.isArray(t.artistIds) ? t.artistIds : []).map(x => String(x).slice(0, 64)).slice(0, 10), album: String(t.album || '').slice(0, 200),
+    img: typeof t.img === 'string' && t.img.startsWith('https://') ? t.img : '', dur: +t.dur || 0, year: String(t.year || '').slice(0, 4),
+    url: sp(t.url) ? t.url : 'https://open.spotify.com/track/' + t.id, src: String(t.src || '').slice(0, 60), g: String(t.g || '').slice(0, 30) };
+};
+$('#libExport').addEventListener('click', async () => {
+  const all = await DB.all().catch(() => []); if (!all.length) return toast('Não há playlists para exportar.');
+  const a = el('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({ app: 'musicai', v: 1, playlists: all })], { type: 'application/json' }));
+  a.download = 'musicai-backup-' + new Date().toISOString().slice(0, 10) + '.json'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000); toast('Backup gerado (' + all.length + ' playlists).');
+});
+$('#libImport').addEventListener('change', async e => {
+  const file = e.target.files[0]; e.target.value = ''; if (!file) return;
+  try {
+    const j = JSON.parse(await file.text()); if (j.app !== 'musicai' || !Array.isArray(j.playlists)) throw new Error('arquivo inválido');
+    let n = 0;
+    for (const p of j.playlists) {
+      if (!p || !Array.isArray(p.tracks)) continue;
+      const tracks = p.tracks.map(cleanTrack).filter(Boolean).slice(0, 10000);
+      await DB.put({ id: typeof p.id === 'string' && /^[\w-]{1,40}$/.test(p.id) ? p.id : 'pl_' + Date.now().toString(36) + n, name: String(p.name || 'Playlist').slice(0, 100), desc: String(p.desc || '').slice(0, 300),
+        created: +p.created || Date.now(), updated: +p.updated || Date.now(), tracks, sp: null,
+        spotifyUrl: typeof p.spotifyUrl === 'string' && p.spotifyUrl.startsWith('https://open.spotify.com/') ? p.spotifyUrl : '',
+        req: { qty: tracks.length, genres: Array.isArray(p.req?.genres) ? p.req.genres.map(x => String(x).slice(0, 30)).slice(0, 20) : [], names: [], moods: [], unknown: [] } });
+      n++;
+    }
+    toast(n + ' playlist(s) importada(s).'); renderLib();
+  } catch (err) { toast('Não consegui importar: ' + err.message); }
+});
+$$('.nav-btn').forEach(b => b.addEventListener('click', () => { if (b.dataset.view === 'library') renderLib(); if (b.dataset.view === 'create') updateDraftBtn(); }));
+
+// ---------- criar no Spotify (lotes de 100, com retomada) ----------
+function renderSp() {
+  const sp = DRAFT?.sp, msg = $('#spMsg'), wrap = $('#spBarWrap'), open = $('#pvOpenSp');
+  wrap.hidden = !sp; open.hidden = !(sp && sp.url);
+  if (sp && sp.url) open.href = sp.url;
+  if (!sp) { msg.textContent = ''; $('#pvSaveSp').textContent = 'Criar no Spotify'; return; }
+  $('#spBar').style.width = Math.round(sp.done / sp.uris.length * 100) + '%';
+  if (sp.finished) { msg.textContent = '✅ Enviado: ' + sp.done + ' de ' + sp.uris.length + ' músicas. ' + (sp.verified ? 'Conferi no Spotify: o total bate.' : 'Não consegui conferir o total no Spotify.'); $('#pvSaveSp').textContent = 'Criar outra no Spotify'; }
+  else { msg.textContent = '⚠️ Envio incompleto: ' + sp.done + ' de ' + sp.uris.length + '. ' + (sp.err || '') + ' Toque em "Retomar envio".'; $('#pvSaveSp').textContent = 'Retomar envio'; }
+}
+let spBusy = false;
+async function saveSpotify() {
+  const d = DRAFT; if (!d || !d.tracks.length) return toast('A prévia está vazia.');
+  if (!store.get('sp_access')) return toast('Conecte o Spotify na tela Início.');
+  if (spBusy) return; spBusy = true; $('#pvSaveSp').disabled = true;
+  const uris = [...new Set(d.tracks.map(t => t.uri))];
+  try {
+    if (!(d.sp && !d.sp.finished && d.sp.uris.length === uris.length && d.sp.uris.every((u, i) => u === uris[i]))) {
+      if (uris.length > 10000) throw new Error('o Spotify aceita até 10.000 músicas por playlist');
+      const p = await api('/me/playlists', { method: 'POST', body: { name: (d.name || 'Minha playlist').slice(0, 100), description: (d.desc || '').slice(0, 300), public: $('#pvPublic').value === '1' } });
+      if (!p.id) throw new Error('o Spotify não devolveu o id da playlist');
+      d.sp = { id: p.id, url: p.external_urls?.spotify || 'https://open.spotify.com/playlist/' + p.id, uris, done: 0, finished: false, err: '' };
+    }
+    const sp = d.sp; sp.err = '';
+    if (sp.done > 0) { const v0 = await api('/playlists/' + sp.id + '/items?limit=1').catch(() => null); if (v0 && typeof v0.total === 'number' && v0.total <= sp.uris.length) sp.done = v0.total; }
+    while (sp.done < sp.uris.length) {
+      const chunk = sp.uris.slice(sp.done, sp.done + 100);
+      await api('/playlists/' + sp.id + '/items', { method: 'POST', body: { uris: chunk } });
+      sp.done += chunk.length; persistDraft(); renderSp(); await sleep(250);
+    }
+    const v = await api('/playlists/' + sp.id + '/items?limit=1').catch(() => null);
+    if (v && typeof v.total === 'number' && v.total !== sp.uris.length) { sp.done = Math.min(sp.done, v.total); sp.err = 'O Spotify mostra ' + v.total + ' músicas na playlist, mas eram ' + sp.uris.length + '.'; persistDraft(); renderSp(); return toast('A conferência do total falhou.'); }
+    sp.verified = !!(v && typeof v.total === 'number'); sp.finished = true; persistDraft(); renderSp(); if (d.id) saveLib(); toast('Playlist criada no Spotify.');
+  } catch (e) {
+    const hint = /403/.test(e.message) ? ' Possível falta de permissão: toque em Sair da conta (Meu gosto), conecte de novo e confira se seu e-mail está liberado no painel do Spotify.' : '';
+    if (d.sp && !d.sp.finished) d.sp.err = 'Erro: ' + e.message + '.' + hint; else $('#spMsg').textContent = 'Não consegui criar a playlist no Spotify: ' + e.message + '.' + hint + ' Use "Salvar na biblioteca" ou "Copiar links".';
+    persistDraft(); if (d.sp) renderSp(); toast('Falha: ' + e.message);
+  } finally { spBusy = false; $('#pvSaveSp').disabled = false; }
+}
+$('#pvSaveSp').addEventListener('click', saveSpotify);
+
+// ---------- ao abrir: recuperar rascunho ----------
+(async () => { try { navigator.storage?.persist?.(); const d = await DB.get('draft'); if (d && d.tracks && d.tracks.length) { DRAFT = d; updateDraftBtn(); } } catch (e) {} })();
+</script>
+</body>
+</html>
